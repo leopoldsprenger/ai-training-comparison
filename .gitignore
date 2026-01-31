@@ -25,6 +25,3 @@ pyenv/
 
 # Ignore macOS system files
 .DS_Store
-
-# Ignore helper script used for generating a specific image manually
-src/create_comparison_graph.py
