@@ -1,10 +1,3 @@
-"""Utilities for loading MNIST datasets and handling model I/O safely.
-
-This module provides a small, defensive wrapper around dataset loading
-and model save/load so the rest of the codebase can fail gracefully when
-files are missing or malformed.
-"""
-
 import os
 import warnings
 from pathlib import Path
