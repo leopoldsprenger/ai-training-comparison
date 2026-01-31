@@ -1,36 +1,22 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import argparse
 
 import sys
 from pathlib import Path
-
 parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
-import config
 import data_manager as data
+import config
 
-class NeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        
-        self.layer1 = nn.Linear(data.TENSOR_SIZE, 100)
-        self.layer2 = nn.Linear(100, 50)
-        self.layer3 = nn.Linear(50, data.NUM_CLASSES)
-        
-        self.relu = nn.ReLU()
-
-    def forward(self, input_images: torch.Tensor) -> torch.Tensor:
-        input_images = input_images.view(-1, data.TENSOR_SIZE)
-
-        input_images = self.relu(self.layer1(input_images))
-        input_images = self.relu(self.layer2(input_images))
-
-        return self.layer3(input_images).squeeze()
+from neural_network import NeuralNetwork
+from test import test_model 
 
 def evaluate_accuracy(model: nn.Module, data_loader: DataLoader) -> float:
     correct, total = 0, 0
@@ -169,32 +155,12 @@ def plot_accuracies_data(best_accuracies: list[float], average_accuracies: list[
     plt.legend()
     plt.show()
 
-def test_model(neural_network: nn.Module) -> None:
-    test_images, _ = data.TEST_DATASET[0:40]
-    predictions = neural_network(test_images).argmax(axis=1)
-    
-    figure, _ = plt.subplots(4, 10, figsize=(22.5, 15))
-
-    for i in range(40):
-        plt.subplot(4, 10, i + 1)
-        plt.imshow(test_images[i])
-        plt.title(f'Predicted Digit: {predictions[i]}')
-    
-    figure.tight_layout()
-    plt.show()
-
-def run_training_mode(train_dataloader: DataLoader, test_dataloader: DataLoader) -> None:
-    while True:
-        try:
-            num_generations = int(input('How many generations should the model train for: '))
-            break
-        except ValueError:
-            print('Generation number was not valid. Please try again...')
-
+def run_training_mode(model_path: str, train_dataloader: DataLoader, test_dataloader: DataLoader) -> None:
     print("Training model...")
     best_model, best_accuracies, average_accuracies = genetic_algorithm(
         train_dataloader, test_dataloader,
-        NeuralNetwork, num_generations,
+        NeuralNetwork, 
+        config.NUM_GENERATIONS,
         config.POPULATION_SIZE,
         config.NUM_PARENTS,
         config.MURATION_RATE,
@@ -208,41 +174,27 @@ def run_training_mode(train_dataloader: DataLoader, test_dataloader: DataLoader)
     test_model(best_model)
 
     print("Saving model...")
-    data.save_model(
-        data.GENETIC_ALGORITHM_MODEL_PATH, 
-        best_model
-    )
-
-def run_load_mode() -> None:
-    print("Loading model...")
-    neural_network = data.load_model(
-        data.GENETIC_ALGORITHM_MODEL_PATH,
-        NeuralNetwork()
-    )
-
-    print("Testing model...")
-    test_model(neural_network)
+    data.save_model(model_path, best_model)
 
 def main() -> None:
     train_dataloader = DataLoader(data.TRAIN_DATASET, batch_size=config.BATCH_SIZE)
     test_dataloader = DataLoader(data.TEST_DATASET, batch_size=config.BATCH_SIZE)
 
-    while True:
-        mode = input(
-            'Train and test model with genetic algorithm: 0\n'
-            'Load and test existing model: 1\n'
-            'Which mode would you like to do: '
-        )
+    parser = argparse.ArgumentParser(description="Test a trained MNIST model")
+    parser.add_argument(
+        "--name",
+        type=str,
+        help="Model name (without .pt). Saved to models directory"
+    )
 
-        match mode:
-            case '0':
-                run_training_mode(train_dataloader, test_dataloader)
-                break
-            case '1':
-                run_load_mode()
-                break
-            case _:
-                print("Input wasn't accepted. Please try again.")
+    args = parser.parse_args()
 
-if __name__ == '__main__':
+    if args.name is None:
+        model_path = data.GENETIC_ALGORITHM_MODEL_PATH
+    else:
+        model_path = f"{data.MODEL_WEIGHTS_DIR}/{args.name}.pt"
+
+    run_training_mode(model_path, train_dataloader, test_dataloader)
+
+if __name__ == "__main__":
     main()
