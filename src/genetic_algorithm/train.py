@@ -32,10 +32,12 @@ def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
     return correct / total
 
 def initialize_population(population_size: int, model_class: type[nn.Module]) -> list[nn.Module]:
+    """Create a population of models with random normal-initialized parameters."""
     population = []
     for _ in range(population_size):
         individual = model_class()
         
+        # initialize each parameter with standard normal noise
         for parameter in individual.parameters():
             parameter.data = torch.randn_like(parameter)
         
@@ -44,6 +46,10 @@ def initialize_population(population_size: int, model_class: type[nn.Module]) ->
     return population
 
 def evaluate_population(population: list[nn.Module], train_loader: DataLoader, test_loader: DataLoader, loss_function: nn.Module) -> tuple[list[float], list[float], list[float]]:
+    """Evaluate each individual and return (fitness_scores, train_accs, test_accs).
+
+    Fitness is computed as average training loss (lower is better).
+    """
     fitness_scores = []
     train_accuracies = []
     test_accuracies = []
@@ -71,6 +77,7 @@ def select_parents(population: list[nn.Module], fitness_scores: list[float], num
     return [individual for _, individual in scored_population[:num_parents]]
 
 def crossover(parents: list[nn.Module], num_offspring: int) -> list[nn.Module]:
+    """Create `num_offspring` children using one-point crossover of flattened parameters."""
     offspring = []
 
     for _ in range(num_offspring):
@@ -81,6 +88,7 @@ def crossover(parents: list[nn.Module], num_offspring: int) -> list[nn.Module]:
             flat_param1 = param1.detach().view(-1)
             flat_param2 = param2.detach().view(-1)
 
+            # one-point crossover along flattened parameter vector
             crossover_point = random.randint(0, flat_param1.numel())
             flat_child = torch.cat([flat_param1[:crossover_point], flat_param2[crossover_point:]])
 
@@ -91,6 +99,10 @@ def crossover(parents: list[nn.Module], num_offspring: int) -> list[nn.Module]:
     return offspring
 
 def mutate(individuals: list[nn.Module], mutation_rate: float, mutation_strength: float) -> list[nn.Module]:
+    """Apply Gaussian perturbations to parameters with probability `mutation_rate`.
+
+    Perturbations are scaled by `mutation_strength`.
+    """
     for individual in individuals:
         for parameter in individual.parameters():
             if random.random() < mutation_rate:
@@ -108,6 +120,10 @@ def genetic_algorithm(
         mutation_rate: float, 
         mutation_strength: float
     ) -> tuple[nn.Module, list[float], list[float]]:
+    """Run the genetic algorithm and return the best model and accuracy histories.
+
+    Returns (best_individual, best_accuracies, average_test_accuracies).
+    """
     loss_function = nn.CrossEntropyLoss()
 
     population = initialize_population(population_size, model)
@@ -125,6 +141,7 @@ def genetic_algorithm(
         best_index = test_accuracies.index(max(test_accuracies))
         current_best_individual = population[best_index]
 
+        # update global best if current generation produced a better test accuracy
         if best_individual is None or test_accuracies[best_index] > max(best_accuracies, default=0):
             best_individual = current_best_individual
 
@@ -142,6 +159,7 @@ def genetic_algorithm(
     return best_individual, best_accuracies, average_test_accuracies
 
 def plot_accuracies_data(best_accuracies: list[float], average_accuracies: list[float]) -> None:
+    """Plot best and average accuracies across generations (blocking)."""
     plt.figure(figsize=(10, 6))
 
     plt.plot(range(len(best_accuracies)), best_accuracies, 'o--', color='blue', label='Best Accuracy')
@@ -155,6 +173,7 @@ def plot_accuracies_data(best_accuracies: list[float], average_accuracies: list[
     plt.show()
 
 def run_training_mode(model_path: str, train_dataloader: DataLoader, test_dataloader: DataLoader) -> None:
+    """Execute the genetic algorithm workflow and persist the best model to `model_path`."""
     print("training model...")
     best_model, best_accuracies, average_accuracies = genetic_algorithm(
         train_dataloader, test_dataloader,
@@ -170,7 +189,7 @@ def run_training_mode(model_path: str, train_dataloader: DataLoader, test_datalo
     plot_accuracies_data(best_accuracies, average_accuracies)
 
     print("testing model...")
-    test_model(best_model)
+    test_model(best_model, test_dataloader)
 
     print("saving model...")
     data.save_model(model_path, best_model)

@@ -18,8 +18,10 @@ from test import test_model
 import config
 
 def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
+    """Compute and return the classification accuracy (0..1) on the dataset."""
     correct, total = 0, 0
 
+    # disable gradient computation for faster inference
     with torch.no_grad():
         for images, labels in dataloader:
             outputs = model(images)
@@ -32,6 +34,10 @@ def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
     return correct / total
 
 def average_epoch_and_loss_data(epoch_data: np.ndarray, loss_data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Average per-batch epoch and loss arrays into per-epoch values.
+
+    Returns two 1-D arrays of length `config.NUM_EPOCHS`.
+    """
     epoch_data_average = epoch_data.reshape(config.NUM_EPOCHS, -1)
     loss_data_average = loss_data.reshape(config.NUM_EPOCHS, -1)
     
@@ -53,6 +59,10 @@ def plot_data(data_x: np.ndarray, data_y: np.ndarray) -> None:
     plt.show()
 
 def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int) -> tuple[np.ndarray, np.ndarray]:
+    """Train `model` with SGD and record per-batch epoch progress and loss.
+
+    Returns two numpy arrays: (epochs, losses) collected per batch.
+    """
     optimizer = SGD(model.parameters(), lr=0.01)
     loss = nn.CrossEntropyLoss()
 
@@ -68,6 +78,7 @@ def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int
             loss_value.backward()
             optimizer.step()
 
+            # record approximate fractional epoch progress and loss value
             epochs.append(epoch + 1 / len(data_loader))
             losses.append(loss_value.item())
 
@@ -84,7 +95,7 @@ def run_training_mode(model_path: str, dataloader: DataLoader) -> None:
     plot_data(epoch_data_average, loss_data_average)
     
     print("testing model...")
-    test_model(model)
+    test_model(model, dataloader)
     
     print("saving model...")
     data.save_model(model_path, model)

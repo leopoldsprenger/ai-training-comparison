@@ -14,6 +14,7 @@ from model import Model
 import config
 
 def test_model(model: nn.Module, dataloader: DataLoader) -> None:
+    """Print accuracy and display the first 40 test images with predicted labels."""
     from train import evaluate_accuracy
 
     # print testing accuracy
