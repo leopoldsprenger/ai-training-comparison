@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.optim import SGD
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
-import data_manager
+from data_manager import load_model, save_model, MODEL_WEIGHTS_PATH, TRAIN_DATASET, TEST_DATASET
 
 class NeuralNetwork(nn.Module):
     def __init__(self):
@@ -73,7 +74,7 @@ def train_model(data_loader, neural_network, num_epochs):
 def test_model(neural_network):
     print("Testing model...")
     # splice of the first 2000 entries in the test dataset
-    test_images, test_labels = data_manager.test_dataset[0:2000]
+    test_images, test_labels = TEST_DATASET[0:2000]
     # get the predicted class of the neural network
     test_label_predictions = neural_network(test_images).argmax(axis=1)
 
@@ -125,7 +126,7 @@ def train_model_from_scratch():
     test_model(neural_network)
     # save the currently trained model's weights
     # note that this will overwrite any existing file saved under the same path
-    data_manager.save_model(neural_network, f"{data_manager.model_weights_path}/gradient_descent.pt")
+    save_model(neural_network, f"{MODEL_WEIGHTS_PATH}/gradient_descent.pt")
 
 def main():
     # give the user a choice if he wants to train a new model or test / showcase an existing one
@@ -134,7 +135,7 @@ def main():
         train_model_from_scratch()
     elif mode == '1':
         # load an existing model's weights'
-        neural_network = data_manager.load_model(f"{data_manager.model_weights_path}/gradient_descent.pt", NeuralNetwork())
+        neural_network = load_model(f"{MODEL_WEIGHTS_PATH}/gradient_descent.pt", NeuralNetwork())
         # test the existing model
         test_model(neural_network)
     else:
@@ -147,7 +148,7 @@ batch_size = 5
 # load the dataset into the dataloader with a batch size of 5
 # the dataloader will give 1200 batches of 5 images every time (6000 images / 5 images per batch)
 # this is important for training, as you can easily iterate through the dataloader
-train_dataloader = data_manager.DataLoader(data_manager.train_dataset, batch_size=batch_size)
+train_dataloader = DataLoader(TRAIN_DATASET, batch_size=batch_size)
 # initialize the neural network
 neural_network = NeuralNetwork()
 # set the number of epochs that the model will be trained for

@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+from torch.utils.data import DataLoader
 
 import sys
 from pathlib import Path
@@ -10,7 +11,7 @@ from pathlib import Path
 parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
-import data_manager
+from data_manager import load_model, save_model, MODEL_WEIGHTS_PATH, TRAIN_DATASET, TEST_DATASET
 
 class NeuralNetwork(nn.Module):
     def __init__(self):
@@ -216,7 +217,7 @@ def plot_accuracies_data(best_accuracies, average_accuracies):
 def test_model(neural_network):
     print("Testing model...")
     # splice of the first 2000 entries in the test dataset
-    test_images, test_labels = data_manager.test_dataset[0:2000]
+    test_images, test_labels = TEST_DATASET[0:2000]
     test_label_predictions = neural_network(test_images).argmax(axis=1)
     # define the figure and 2D array of subplots
     figure, axis = plt.subplots(4, 10, figsize=(22.5, 15))
@@ -235,8 +236,8 @@ def test_model(neural_network):
 
 def main():
     # load the test and train dataloader from the train and test datasets stored in data_manager.py
-    train_dataloader = data_manager.DataLoader(data_manager.train_dataset, batch_size=batch_size)
-    test_dataloader = data_manager.DataLoader(data_manager.test_dataset, batch_size=batch_size)
+    train_dataloader = DataLoader(TRAIN_DATASET, batch_size=batch_size)
+    test_dataloader = DataLoader(TEST_DATASET, batch_size=batch_size)
     # let the user choose wether to train a model from scratch or showcase an existing one
     mode = input('Train and test model with genetic algorithm: 0\nLoad and test existing model: 1\nWhich mode would you like to do: ')
     # if the user picked to train a model from scratch
@@ -255,14 +256,14 @@ def main():
             # test the best model from the last generation of training
             test_model(best_model)
             # save the best model
-            data_manager.save_model(best_model, f"{data_manager.model_weights_path}/genetic_algorithm.pt")
+            save_model(best_model, f"{MODEL_WEIGHTS_PATH}/genetic_algorithm.pt")
         except ValueError:
             print('Generation number was not valid. Please try again...')
             main()
     # if the user picked to showcase an existing model
     elif mode == '1':
         # load a neural network using the load_model function from the data_manager
-        neural_network = data_manager.load_model(f"{data_manager.model_weights_path}/genetic_algorithm.pt", NeuralNetwork())
+        neural_network = load_model(f"{MODEL_WEIGHTS_PATH}/genetic_algorithm.pt", NeuralNetwork())
         # run the test_model function with the neural_network as input
         test_model(neural_network)
     else:
