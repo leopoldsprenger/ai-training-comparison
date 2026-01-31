@@ -24,7 +24,7 @@ class NeuralNetwork(nn.Module):
         
         self.relu = nn.ReLU()
 
-    def forward(self, input_images):
+    def forward(self, input_images: torch.Tensor) -> torch.Tensor:
         input_images = input_images.view(-1, data.TENSOR_SIZE)
 
         input_images = self.relu(self.layer1(input_images))
@@ -32,7 +32,7 @@ class NeuralNetwork(nn.Module):
 
         return self.layer3(input_images).squeeze()
 
-def evaluate_accuracy(model, data_loader):
+def evaluate_accuracy(model: nn.Module, data_loader: DataLoader) -> float:
     correct, total = 0, 0
 
     with torch.no_grad():
@@ -46,7 +46,7 @@ def evaluate_accuracy(model, data_loader):
 
     return correct / total
 
-def initialize_population(population_size, model_class):
+def initialize_population(population_size: int, model_class: type[nn.Module]) -> list[nn.Module]:
     population = []
     for _ in range(population_size):
         individual = model_class()
@@ -58,7 +58,7 @@ def initialize_population(population_size, model_class):
     
     return population
 
-def evaluate_population(population, train_loader, test_loader, loss_function):
+def evaluate_population(population: list[nn.Module], train_loader: DataLoader, test_loader: DataLoader, loss_function: nn.Module) -> tuple[list[float], list[float], list[float]]:
     fitness_scores = []
     train_accuracies = []
     test_accuracies = []
@@ -76,7 +76,7 @@ def evaluate_population(population, train_loader, test_loader, loss_function):
 
     return fitness_scores, train_accuracies, test_accuracies
 
-def select_parents(population, fitness_scores, num_parents):
+def select_parents(population: list[nn.Module], fitness_scores: list[float], num_parents: int) -> list[nn.Module]:
     def get_fitness(pair):
         return pair[0]
 
@@ -85,7 +85,7 @@ def select_parents(population, fitness_scores, num_parents):
 
     return [individual for _, individual in scored_population[:num_parents]]
 
-def crossover(parents, num_offspring):
+def crossover(parents: list[nn.Module], num_offspring: int) -> list[nn.Module]:
     offspring = []
 
     for _ in range(num_offspring):
@@ -105,7 +105,7 @@ def crossover(parents, num_offspring):
 
     return offspring
 
-def mutate(individuals, mutation_rate, mutation_strength):
+def mutate(individuals: list[nn.Module], mutation_rate: float, mutation_strength: float) -> list[nn.Module]:
     for individual in individuals:
         for parameter in individual.parameters():
             if random.random() < mutation_rate:
@@ -113,7 +113,16 @@ def mutate(individuals, mutation_rate, mutation_strength):
     
     return individuals
 
-def genetic_algorithm(train_loader, test_loader, model, num_generations, population_size, num_parents, mutation_rate, mutation_strength):
+def genetic_algorithm(
+        train_loader: DataLoader, 
+        test_loader: DataLoader, 
+        model: type[nn.Module], 
+        num_generations: int, 
+        population_size: int, 
+        num_parents: int, 
+        mutation_rate: float, 
+        mutation_strength: float
+    ) -> tuple[nn.Module, list[float], list[float]]:
     loss_function = nn.CrossEntropyLoss()
 
     population = initialize_population(population_size, model)
@@ -147,7 +156,7 @@ def genetic_algorithm(train_loader, test_loader, model, num_generations, populat
 
     return best_individual, best_accuracies, average_test_accuracies
 
-def plot_accuracies_data(best_accuracies, average_accuracies):
+def plot_accuracies_data(best_accuracies: list[float], average_accuracies: list[float]) -> None:
     plt.figure(figsize=(10, 6))
 
     plt.plot(range(len(best_accuracies)), best_accuracies, 'o--', color='blue', label='Best Accuracy')
@@ -160,7 +169,7 @@ def plot_accuracies_data(best_accuracies, average_accuracies):
     plt.legend()
     plt.show()
 
-def test_model(neural_network):
+def test_model(neural_network: nn.Module) -> None:
     test_images, _ = data.TEST_DATASET[0:40]
     predictions = neural_network(test_images).argmax(axis=1)
     
@@ -174,7 +183,7 @@ def test_model(neural_network):
     figure.tight_layout()
     plt.show()
 
-def run_training_mode(train_dataloader, test_dataloader):
+def run_training_mode(train_dataloader: DataLoader, test_dataloader: DataLoader) -> None:
     while True:
         try:
             num_generations = int(input('How many generations should the model train for: '))
@@ -204,7 +213,7 @@ def run_training_mode(train_dataloader, test_dataloader):
         best_model
     )
 
-def run_load_mode():
+def run_load_mode() -> None:
     print("Loading model...")
     neural_network = data.load_model(
         data.GENETIC_ALGORITHM_MODEL_PATH,
@@ -214,7 +223,7 @@ def run_load_mode():
     print("Testing model...")
     test_model(neural_network)
 
-def main():
+def main() -> None:
     train_dataloader = DataLoader(data.TRAIN_DATASET, batch_size=config.BATCH_SIZE)
     test_dataloader = DataLoader(data.TEST_DATASET, batch_size=config.BATCH_SIZE)
 

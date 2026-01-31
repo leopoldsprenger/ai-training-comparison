@@ -1,5 +1,6 @@
 # import libraries needed for managing data
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
@@ -7,7 +8,7 @@ class MNISTDataset(Dataset):
     def __init__(self, filepath):
         self.images, self.labels = torch.load(filepath, weights_only=True)
 
-        self.images.view(-1, TENSOR_SIZE)
+        self.images = self.images.view(-1, TENSOR_SIZE)
         # convert to values of 0-1
         self.images = self.images / 255
         
@@ -19,11 +20,11 @@ class MNISTDataset(Dataset):
     def __getitem__(self, image_index):
         return self.images[image_index], self.labels[image_index]
 
-def save_model(save_path, model):
+def save_model(save_path: str, model: nn.Module) -> None:
     torch.save(model.state_dict(), save_path)
     print(f"saved model to path: {save_path}")
 
-def load_model(load_path, model):
+def load_model(load_path: str, model: nn.Mopdule) -> None:
     model.load_state_dict(torch.load(load_path, weights_only=True))
     model.eval()
     return model

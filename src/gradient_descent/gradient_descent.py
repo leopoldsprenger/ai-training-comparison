@@ -1,4 +1,5 @@
 # import all the libraries needed
+import torch
 import torch.nn as nn
 from torch.optim import SGD
 from torch.utils.data import DataLoader
@@ -24,7 +25,7 @@ class NeuralNetwork(nn.Module):
 
         self.rectifier = nn.ReLU()
 
-    def forward(self, input_images):
+    def forward(self, input_images: torch.Tensor) -> torch.Tensor:
         input_images = input_images.view(-1, data.TENSOR_SIZE)
 
         input_images = self.rectifier(self.Matrix1(input_images))
@@ -33,7 +34,7 @@ class NeuralNetwork(nn.Module):
 
         return input_images.squeeze()
 
-def train_model(data_loader, neural_network, num_epochs):
+def train_model(data_loader: DataLoader, neural_network: type[nn.Module], num_epochs: int) -> tuple[np.ndarray, np.ndarray]:
     optimizer = SGD(neural_network.parameters(), lr=0.01)
     loss = nn.CrossEntropyLoss()
 
@@ -54,7 +55,7 @@ def train_model(data_loader, neural_network, num_epochs):
 
     return np.array(epochs), np.array(losses)
 
-def test_model(neural_network):
+def test_model(neural_network: nn.Module) -> None:
     test_images, test_labels = data.TEST_DATASET[0:40]
     test_label_predictions = neural_network(test_images).argmax(axis=1)
 
@@ -68,7 +69,7 @@ def test_model(neural_network):
     figure.tight_layout()
     plt.show()
 
-def average_epoch_and_loss_data(epoch_data, loss_data):
+def average_epoch_and_loss_data(epoch_data: np.ndarray, loss_data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     epoch_data_average = epoch_data.reshape(config.NUM_EPOCHS, -1)
     loss_data_average = loss_data.reshape(config.NUM_EPOCHS, -1)
     
@@ -77,7 +78,7 @@ def average_epoch_and_loss_data(epoch_data, loss_data):
     
     return epoch_data_average, loss_data_average
 
-def plot_data(data_x, data_y):
+def plot_data(data_x: np.ndarray, data_y: np.ndarray) -> None:
     plt.figure(1)
 
     plt.plot(data_x, data_y, 'o--', color='blue', label='average cross entropy loss per epoch')
@@ -89,7 +90,7 @@ def plot_data(data_x, data_y):
     plt.legend()
     plt.show()
 
-def run_training_mode(train_dataloader):
+def run_training_mode(train_dataloader: DataLoader) -> None:
     neural_network = NeuralNetwork()
 
     print("Training model...")
@@ -105,7 +106,7 @@ def run_training_mode(train_dataloader):
     print("Saving model...")
     data.save_model(neural_network, data.GRADIENT_DESCENT_MODEL_PATH)
 
-def run_load_mode():
+def run_load_mode() -> None:
     print("Loading model...")
     neural_network = data.load_model(
         data.GRADIENT_DESCENT_MODEL_PATH,
@@ -115,7 +116,7 @@ def run_load_mode():
     print("Testing model...")
     test_model(neural_network)
 
-def main():
+def main() -> None:
     train_dataloader = DataLoader(data.TRAIN_DATASET, batch_size=config.BATCH_SIZE)
 
     while True:
