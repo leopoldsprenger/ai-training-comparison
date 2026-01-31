@@ -59,7 +59,11 @@ def evaluate_population(population: list[nn.Module], train_loader: DataLoader, t
             loss_function(individual(images), labels).item()
             for images, labels in train_loader
         ]
-        average_loss = sum(losses) / len(losses)
+        # avoid ZeroDivisionError if train_loader yields no batches
+        if len(losses) == 0:
+            average_loss = float('inf')
+        else:
+            average_loss = sum(losses) / len(losses)
 
         fitness_scores.append(average_loss)
         train_accuracies.append(evaluate_accuracy(individual, train_loader))
@@ -136,25 +140,32 @@ def genetic_algorithm(
     for generation in range(num_generations):
         print(f"training: generation {generation + 1}/{num_generations}")
 
-        fitness_scores, train_accuracies, test_accuracies = evaluate_population(population, train_loader, test_loader, loss_function)
+        try:
+            fitness_scores, train_accuracies, test_accuracies = evaluate_population(population, train_loader, test_loader, loss_function)
 
-        best_index = test_accuracies.index(max(test_accuracies))
-        current_best_individual = population[best_index]
+            best_index = test_accuracies.index(max(test_accuracies))
+            current_best_individual = population[best_index]
 
-        # update global best if current generation produced a better test accuracy
-        if best_individual is None or test_accuracies[best_index] > max(best_accuracies, default=0):
-            best_individual = current_best_individual
+            # update global best if current generation produced a better test accuracy
+            if best_individual is None or test_accuracies[best_index] > max(best_accuracies, default=0):
+                best_individual = current_best_individual
 
-        best_accuracies.append(test_accuracies[best_index])
-        average_train_accuracies.append(np.mean(train_accuracies))
-        average_test_accuracies.append(np.mean(test_accuracies))
+            best_accuracies.append(test_accuracies[best_index])
+            average_train_accuracies.append(np.mean(train_accuracies))
+            average_test_accuracies.append(np.mean(test_accuracies))
 
-        parents = [best_individual] + select_parents(population, fitness_scores, num_parents - 1)
+            parents = [best_individual] + select_parents(population, fitness_scores, num_parents - 1)
 
-        offspring = crossover(parents, population_size - num_parents)        
-        offspring = mutate(offspring, mutation_rate, mutation_strength)
+            offspring = crossover(parents, population_size - num_parents)        
+            offspring = mutate(offspring, mutation_rate, mutation_strength)
 
-        population = [best_individual] + offspring
+            population = [best_individual] + offspring
+        except Exception as e:
+            print(f"warning: generation {generation+1} failed with error: {e}")
+            import traceback
+            traceback.print_exc()
+            # continue to next generation (best_individual may be None)
+            continue
 
     return best_individual, best_accuracies, average_test_accuracies
 
@@ -170,29 +181,38 @@ def plot_accuracies_data(best_accuracies: list[float], average_accuracies: list[
     plt.title('Best and Average Accuracy per Generation')
     
     plt.legend()
-    plt.show()
+    try:
+        plt.show()
+    except Exception as e:
+        print(f"warning: plotting failed: {e}")
 
 def run_training_mode(model_path: str, train_dataloader: DataLoader, test_dataloader: DataLoader) -> None:
     """Execute the genetic algorithm workflow and persist the best model to `model_path`."""
-    print("training model...")
-    best_model, best_accuracies, average_accuracies = genetic_algorithm(
-        train_dataloader, test_dataloader,
-        Model, 
-        config.NUM_GENERATIONS,
-        config.POPULATION_SIZE,
-        config.NUM_PARENTS,
-        config.MURATION_RATE,
-        config.MUTATION_STRENGTH
-    )
+    try:
+        print("training model...")
+        best_model, best_accuracies, average_accuracies = genetic_algorithm(
+            train_dataloader, test_dataloader,
+            Model, 
+            config.NUM_GENERATIONS,
+            config.POPULATION_SIZE,
+            config.NUM_PARENTS,
+            config.MURATION_RATE,
+            config.MUTATION_STRENGTH
+        )
 
-    print("plotting best and average accuracies...")
-    plot_accuracies_data(best_accuracies, average_accuracies)
+        print("plotting best and average accuracies...")
+        plot_accuracies_data(best_accuracies, average_accuracies)
 
-    print("testing model...")
-    test_model(best_model, test_dataloader)
+        print("testing model...")
+        test_model(best_model, test_dataloader)
 
-    print("saving model...")
-    data.save_model(model_path, best_model)
+        print("saving model...")
+        data.save_model(model_path, best_model)
+    except Exception as e:
+        print(f"error during GA training run: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 def main() -> None:
     train_dataloader = DataLoader(data.TRAIN_DATASET, batch_size=config.BATCH_SIZE)
@@ -212,7 +232,13 @@ def main() -> None:
     else:
         model_path = f"{data.MODEL_WEIGHTS_DIR}/{args.name}.pt"
 
-    run_training_mode(model_path, train_dataloader, test_dataloader)
+    try:
+        run_training_mode(model_path, train_dataloader, test_dataloader)
+    except Exception as e:
+        print(f"fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

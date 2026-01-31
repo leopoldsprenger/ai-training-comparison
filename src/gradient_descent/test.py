@@ -22,6 +22,10 @@ def test_model(model: nn.Module, dataloader: DataLoader) -> None:
     print(f"accuracy: {round(accuracy*100, 2)} %")
 
     # graph testing plot
+    if not hasattr(data, 'TEST_DATASET') or len(data.TEST_DATASET) == 0:
+        print("warning: TEST_DATASET is empty, skipping visualization")
+        return
+
     test_images, _ = data.TEST_DATASET[0:40]
     test_label_predictions = model(test_images).argmax(axis=1)
 
@@ -36,17 +40,29 @@ def test_model(model: nn.Module, dataloader: DataLoader) -> None:
         plt.title(f'Predicted Digit: {test_label_predictions[i]}')
     
     figure.tight_layout()
-    plt.show()
+    try:
+        plt.show()
+    except Exception as e:
+        print(f"warning: plotting failed: {e}")
 
 def run_testing_mode(model_path: str, dataloader: DataLoader) -> None:
     print("loading model...")
-    model = data.load_model(
-        model_path,
-        Model()
-    )
+    try:
+        model = data.load_model(model_path, Model())
+    except Exception as e:
+        print(f"error loading model: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
-    print("testing model...")
-    test_model(model, dataloader)
+    try:
+        print("testing model...")
+        test_model(model, dataloader)
+    except Exception as e:
+        print(f"error while testing model: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 def main() -> None:
     test_dataloader = DataLoader(data.TEST_DATASET, batch_size=config.BATCH_SIZE)
@@ -65,7 +81,13 @@ def main() -> None:
     else:
         model_path = f"{data.MODEL_WEIGHTS_DIR}/{args.name}.pt"
 
-    run_testing_mode(model_path, test_dataloader)
+    try:
+        run_testing_mode(model_path, test_dataloader)
+    except Exception as e:
+        print(f"fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

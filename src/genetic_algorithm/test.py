@@ -40,13 +40,22 @@ def test_model(model: nn.Module, dataloader: DataLoader) -> None:
 
 def run_testing_mode(model_path: str, dataloader: DataLoader) -> None:
     print("loading model...")
-    model = data.load_model(
-        model_path,
-        Model()
-    )
+    try:
+        model = data.load_model(model_path, Model())
+    except Exception as e:
+        print(f"error loading model: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
-    print("testing model...")
-    test_model(model, dataloader)
+    try:
+        print("testing model...")
+        test_model(model, dataloader)
+    except Exception as e:
+        print(f"error while testing model: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 def main() -> None:
     test_dataloader = DataLoader(data.TEST_DATASET, batch_size=config.BATCH_SIZE)
@@ -65,7 +74,13 @@ def main() -> None:
     else:
         model_path = f"{data.MODEL_WEIGHTS_DIR}/{args.name}.pt"
 
-    run_testing_mode(model_path, test_dataloader)
+    try:
+        run_testing_mode(model_path, test_dataloader)
+    except Exception as e:
+        print(f"fatal error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
