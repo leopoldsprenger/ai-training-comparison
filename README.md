@@ -110,4 +110,8 @@ class NeuralNetwork(nn.Module):
 - **Versteckte Schichten**: Enthält typischerweise eine oder mehrere versteckte Schichten mit ReLU-Aktivierungsfunktionen, um Nichtlinearität einzuführen.
 - **Ausgabeschicht**: Gibt Wahrscheinlichkeiten für jede der zehn Ziffernklassen (0-9) aus.
 
+<<<<<<< HEAD
 Diese Klasse definiert, wie Daten durch das Netzwerk fließen, während des Trainings Gewichte aktualisiert werden und während der Bewertung Vorhersagen getroffen werden.
+=======
+Diese Klasse definiert, wie Daten durch das Netzwerk fließen, während des Trainings Gewichte aktualisiert werden und während der Bewertung Vorhersagen getroffen werden.
+>>>>>>> 70fd63f (refactor: reorganize project structure to follow standard conventions)

@@ -1,0 +1,30 @@
+# .gitignore
+
+# Ignore environment files
+.env
+
+# Ignore IDE/project-specific files
+.ropeproject/
+
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Ignore virtual environment
+venv/
+.venv/
+pyenv/
+
+# Ignore logs
+*.log
+
+# Ignore IDE configurations (e.g., VS Code, PyCharm)
+.vscode/
+.idea/
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore helper script used for generating a specific image manually
+src/create_comparison_graph.py
