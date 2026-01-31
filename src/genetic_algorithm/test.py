@@ -1,4 +1,6 @@
 import torch.nn as nn
+from torch.utils.data import DataLoader
+
 import matplotlib.pyplot as plt
 import argparse
 
@@ -8,11 +10,19 @@ parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
 import data_manager as data
-from neural_network import NeuralNetwork
+from model import Model
+import config
 
-def test_model(neural_network: nn.Module) -> None:
+def test_model(model: nn.Module, dataloader: DataLoader) -> None:
+    from train import evaluate_accuracy
+    
+    # print testing accuracy
+    accuracy = evaluate_accuracy(model, dataloader)
+    print(f"accuracy: {round(accuracy*100, 2)} %")
+
+    # graph testing plot
     test_images, _ = data.TEST_DATASET[0:40]
-    predictions = neural_network(test_images).argmax(axis=1)
+    predictions = model(test_images).argmax(axis=1)
     
     figure, _ = plt.subplots(4, 10, figsize=(22.5, 15))
 
@@ -27,17 +37,19 @@ def test_model(neural_network: nn.Module) -> None:
     figure.tight_layout()
     plt.show()
 
-def run_testing_mode(model_path: str) -> None:
-    print("Loading model...")
-    neural_network = data.load_model(
+def run_testing_mode(model_path: str, dataloader: DataLoader) -> None:
+    print("loading model...")
+    model = data.load_model(
         model_path,
-        NeuralNetwork()
+        Model()
     )
 
-    print("Testing model...")
-    test_model(neural_network)
+    print("testing model...")
+    test_model(model, dataloader)
 
 def main() -> None:
+    test_dataloader = DataLoader(data.TEST_DATASET, batch_size=config.BATCH_SIZE)
+
     parser = argparse.ArgumentParser(description="Test a trained MNIST model with the genetic algorithm")
     parser.add_argument(
         "--name",
@@ -52,7 +64,7 @@ def main() -> None:
     else:
         model_path = f"{data.MODEL_WEIGHTS_DIR}/{args.name}.pt"
 
-    run_testing_mode(model_path)
+    run_testing_mode(model_path, test_dataloader)
 
 if __name__ == "__main__":
     main()

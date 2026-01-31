@@ -8,7 +8,7 @@ sys.path.append(str(parent_dir))
 
 import data_manager as data
 
-class NeuralNetwork(nn.Module):
+class Model(nn.Module):
     def __init__(self):
         super().__init__()
         

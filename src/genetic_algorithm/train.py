@@ -13,16 +13,15 @@ parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
 import data_manager as data
+from model import Model
+from test import test_model 
 import config
 
-from neural_network import NeuralNetwork
-from test import test_model 
-
-def evaluate_accuracy(model: nn.Module, data_loader: DataLoader) -> float:
+def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
     correct, total = 0, 0
 
     with torch.no_grad():
-        for images, labels in data_loader:
+        for images, labels in dataloader:
             outputs = model(images)
             _, predicted_classes = torch.max(outputs, 1)
             true_classes = labels.argmax(dim=1)
@@ -76,7 +75,7 @@ def crossover(parents: list[nn.Module], num_offspring: int) -> list[nn.Module]:
 
     for _ in range(num_offspring):
         parent_1, parent_2 = random.choices(parents, k=2)
-        child = NeuralNetwork()
+        child = Model()
 
         for param1, param2, child_param in zip(parent_1.parameters(), parent_2.parameters(), child.parameters()):
             flat_param1 = param1.detach().view(-1)
@@ -119,7 +118,7 @@ def genetic_algorithm(
     average_test_accuracies = []
  
     for generation in range(num_generations):
-        print(f"Training: Generation {generation + 1}/{num_generations}")
+        print(f"training: generation {generation + 1}/{num_generations}")
 
         fitness_scores, train_accuracies, test_accuracies = evaluate_population(population, train_loader, test_loader, loss_function)
 
@@ -156,10 +155,10 @@ def plot_accuracies_data(best_accuracies: list[float], average_accuracies: list[
     plt.show()
 
 def run_training_mode(model_path: str, train_dataloader: DataLoader, test_dataloader: DataLoader) -> None:
-    print("Training model...")
+    print("training model...")
     best_model, best_accuracies, average_accuracies = genetic_algorithm(
         train_dataloader, test_dataloader,
-        NeuralNetwork, 
+        Model, 
         config.NUM_GENERATIONS,
         config.POPULATION_SIZE,
         config.NUM_PARENTS,
@@ -167,13 +166,13 @@ def run_training_mode(model_path: str, train_dataloader: DataLoader, test_datalo
         config.MUTATION_STRENGTH
     )
 
-    print("Plotting best and average accuracies...")
+    print("plotting best and average accuracies...")
     plot_accuracies_data(best_accuracies, average_accuracies)
 
-    print("Testing model...")
+    print("testing model...")
     test_model(best_model)
 
-    print("Saving model...")
+    print("saving model...")
     data.save_model(model_path, best_model)
 
 def main() -> None:

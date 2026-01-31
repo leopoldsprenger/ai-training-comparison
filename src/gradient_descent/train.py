@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from torch.optim import SGD
 from torch.utils.data import DataLoader
@@ -12,10 +13,23 @@ parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
 import data_manager as data
+from model import Model
+from test import test_model
 import config
 
-from src.gradient_descent.model import Model
-from test import test_model
+def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
+    correct, total = 0, 0
+
+    with torch.no_grad():
+        for images, labels in dataloader:
+            outputs = model(images)
+            _, predicted_classes = torch.max(outputs, 1)
+            true_classes = labels.argmax(dim=1)
+            
+            total += labels.size(0)
+            correct += (predicted_classes == true_classes).sum().item()
+
+    return correct / total
 
 def average_epoch_and_loss_data(epoch_data: np.ndarray, loss_data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     epoch_data_average = epoch_data.reshape(config.NUM_EPOCHS, -1)
@@ -46,7 +60,7 @@ def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int
     epochs = []
 
     for epoch in range(num_epochs):
-        print(f'Training: Epoch {epoch + 1}/{num_epochs}')
+        print(f'training: epoch {epoch + 1}/{num_epochs}')
         for i, (images, labels) in enumerate(data_loader):
             optimizer.zero_grad()
             
@@ -62,17 +76,17 @@ def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int
 def run_training_mode(model_path: str, dataloader: DataLoader) -> None:
     model = Model()
 
-    print("Training model...")
+    print("training model...")
     epoch_data, loss_data = train_model(dataloader, model, config.NUM_EPOCHS)
     epoch_data_average, loss_data_average = average_epoch_and_loss_data(epoch_data, loss_data)
 
-    print("Plotting data...")
+    print("plotting data...")
     plot_data(epoch_data_average, loss_data_average)
     
-    print("Testing model...")
+    print("testing model...")
     test_model(model)
     
-    print("Saving model...")
+    print("saving model...")
     data.save_model(model_path, model)
 
 def main() -> None:
