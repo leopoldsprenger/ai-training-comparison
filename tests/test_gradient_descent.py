@@ -31,9 +31,10 @@ def test_train_model_runs_with_index_labels():
     loader = make_loader(with_one_hot=False)
     model = gd_model.Model()
 
-    epochs, losses = gd_train.train_model(loader, model, num_epochs=1)
+    epochs, losses, accuracies = gd_train.train_model(loader, model, num_epochs=1)
     assert isinstance(epochs, (list, tuple)) or hasattr(epochs, "shape")
     assert losses.shape[0] == epochs.shape[0]
+    assert accuracies.shape[0] == 1
 
 
 def test_evaluate_accuracy_on_one_hot():

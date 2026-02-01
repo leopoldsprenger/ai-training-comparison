@@ -38,40 +38,53 @@ def average_epoch_and_loss_data(epoch_data: np.ndarray, loss_data: np.ndarray) -
 
     Returns two 1-D arrays of length `config.NUM_EPOCHS`.
     """
-    epoch_data_average = epoch_data.reshape(config.NUM_EPOCHS, -1)
-    loss_data_average = loss_data.reshape(config.NUM_EPOCHS, -1)
-    
-    epoch_data_average = epoch_data_average.mean(axis=1)
-    loss_data_average = loss_data_average.mean(axis=1)
-    
-    return epoch_data_average, loss_data_average
+    # compute average loss per epoch
+    loss_data_average = loss_data.reshape(config.NUM_EPOCHS, -1).mean(axis=1)
 
-def plot_data(data_x: np.ndarray, data_y: np.ndarray) -> None:
-    plt.figure(1)
+    # use 1..NUM_EPOCHS as x-axis indices for plotting
+    epoch_indices = np.arange(1, config.NUM_EPOCHS + 1)
 
-    plt.plot(data_x, data_y, 'o--', color='blue', label='average cross entropy loss per epoch')
-    
-    plt.xlabel('Epoch Number')
-    plt.ylabel('Cross Entropy (averaged per epoch)')
-    plt.title('Cross Entropy (averaged per epoch)')
-    
-    plt.legend()
+    return epoch_indices, loss_data_average
+
+def plot_data(data_x: np.ndarray, data_y: np.ndarray, data_y2: np.ndarray | None = None) -> None:
+    # primary axis: loss
+    fig, ax1 = plt.subplots()
+    ax1.plot(data_x, data_y, 'o--', color='blue', label='average cross entropy loss per epoch')
+    ax1.set_xlabel('Epoch Number')
+    ax1.set_ylabel('Cross Entropy (averaged per epoch)', color='blue')
+    ax1.tick_params(axis='y', labelcolor='blue')
+
+    # secondary axis: accuracy (optional)
+    if data_y2 is not None:
+        ax2 = ax1.twinx()
+        ax2.plot(data_x, data_y2, 's-', color='green', label='accuracy per epoch')
+        ax2.set_ylabel('Accuracy (0..1)', color='green')
+        ax2.tick_params(axis='y', labelcolor='green')
+
+        # combine legends
+        lines, labels = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines + lines2, labels + labels2)
+    else:
+        ax1.legend()
+
     # show can fail in headless environments; don't crash the program
     try:
         plt.show()
     except Exception as e:
         print(f"warning: plotting failed: {e}")
 
-def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int) -> tuple[np.ndarray, np.ndarray]:
+def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Train `model` with SGD and record per-batch epoch progress and loss.
 
-    Returns two numpy arrays: (epochs, losses) collected per batch.
+    Returns three numpy arrays: (epochs_per_batch, losses_per_batch, accuracies_per_epoch).
     """
     optimizer = SGD(model.parameters(), lr=0.01)
     loss = nn.CrossEntropyLoss()
 
     losses = []
     epochs = []
+    accuracies: list[float] = []
 
     # prefer to fail fast if no data is provided
     if hasattr(data_loader, "__len__") and len(data_loader) == 0:
@@ -93,18 +106,22 @@ def train_model(data_loader: DataLoader, model: type[nn.Module], num_epochs: int
             epochs.append(epoch + fraction)
             losses.append(loss_value.item())
 
-    return np.array(epochs), np.array(losses)
+        # evaluate accuracy at the end of the epoch
+        acc = evaluate_accuracy(model, data_loader)
+        accuracies.append(acc)
+
+    return np.array(epochs), np.array(losses), np.array(accuracies)
 
 def run_training_mode(model_path: str, dataloader: DataLoader) -> None:
     model = Model()
 
     try:
         print("training model...")
-        epoch_data, loss_data = train_model(dataloader, model, config.NUM_EPOCHS)
-        epoch_data_average, loss_data_average = average_epoch_and_loss_data(epoch_data, loss_data)
+        epoch_data, loss_data, accuracy_data = train_model(dataloader, model, config.NUM_EPOCHS)
+        epoch_indices, loss_data_average = average_epoch_and_loss_data(epoch_data, loss_data)
 
         print("plotting data...")
-        plot_data(epoch_data_average, loss_data_average)
+        plot_data(epoch_indices, loss_data_average, accuracy_data)
         
         print("testing model...")
         test_model(model, dataloader)
