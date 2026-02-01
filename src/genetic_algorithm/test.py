@@ -10,12 +10,12 @@ parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
 import data_manager as data
-from model import Model
-import config
+from .model import Model
+from . import config
 
 def test_model(model: nn.Module, dataloader: DataLoader) -> None:
-    """Print accuracy and display sample predictions (first 40 images)."""
-    from train import evaluate_accuracy
+    """Print accuracy and display the first 40 test images with predicted labels."""
+    from .train import evaluate_accuracy
     
     # print testing accuracy
     accuracy = evaluate_accuracy(model, dataloader)
@@ -62,7 +62,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Test a trained MNIST model with the genetic algorithm")
     parser.add_argument(
-        "--name",
+        "--name", "--n",
         type=str,
         help="Model name (without .pt). Saved to models directory"
     )

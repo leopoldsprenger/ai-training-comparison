@@ -13,9 +13,9 @@ parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
 import data_manager as data
-from model import Model
-from test import test_model 
-import config
+from .model import Model
+from .test import test_model 
+from . import config
 
 def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
     correct, total = 0, 0
@@ -220,7 +220,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Test a trained MNIST model")
     parser.add_argument(
-        "--name",
+        "--name", "--n",
         type=str,
         help="Model name (without .pt). Saved to models directory"
     )

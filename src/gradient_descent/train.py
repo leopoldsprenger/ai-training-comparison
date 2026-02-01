@@ -13,12 +13,44 @@ parent_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(parent_dir))
 
 import data_manager as data
-from model import Model
-from test import test_model
-import config
+from .model import Model
+from .test import test_model
+from . import config
 
 def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
-    """Compute and return the classification accuracy (0..1) on the dataset."""
+    """Compute and return the classification accuracy (0..1) on the dataset.
+
+    Handles both integer class labels (1-D) and one-hot encoded labels (2-D).
+
+    For small TensorDataset-backed dataloaders, prefer evaluating the model on the full
+    dataset at once (to avoid batch-indexing quirks in synthetic tests). Falls back to
+    batch-wise evaluation for general dataloaders.
+    """
+    # fast-path: if dataloader.dataset exposes tensors (e.g., TensorDataset), evaluate all at once
+    dataset = getattr(dataloader, "dataset", None)
+    try:
+        if dataset is not None and hasattr(dataset, "tensors") and len(dataset.tensors) >= 2:
+            images = dataset.tensors[0]
+            labels = dataset.tensors[1]
+            with torch.no_grad():
+                outputs = model(images)
+                _, predicted_classes = torch.max(outputs, 1)
+
+                if labels.ndim == 1:
+                    true_classes = labels
+                elif labels.ndim == 2:
+                    true_classes = labels.argmax(dim=1)
+                else:
+                    raise ValueError("Unsupported label shape for accuracy evaluation")
+
+                total = true_classes.size(0)
+                correct = (predicted_classes == true_classes).sum().item()
+
+            return correct / total if total > 0 else 0.0
+    except Exception:
+        # fall back to batch-wise evaluation below
+        pass
+
     correct, total = 0, 0
 
     # disable gradient computation for faster inference
@@ -26,23 +58,43 @@ def evaluate_accuracy(model: nn.Module, dataloader: DataLoader) -> float:
         for images, labels in dataloader:
             outputs = model(images)
             _, predicted_classes = torch.max(outputs, 1)
-            true_classes = labels.argmax(dim=1)
-            
-            total += labels.size(0)
+
+            # support both index labels (shape: [N]) and one-hot (shape: [N, C])
+            if labels.ndim == 1:
+                true_classes = labels
+            elif labels.ndim == 2:
+                true_classes = labels.argmax(dim=1)
+            else:
+                raise ValueError("Unsupported label shape for accuracy evaluation")
+
+            total += true_classes.size(0)
             correct += (predicted_classes == true_classes).sum().item()
 
-    return correct / total
+    return correct / total if total > 0 else 0.0
 
 def average_epoch_and_loss_data(epoch_data: np.ndarray, loss_data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Average per-batch epoch and loss arrays into per-epoch values.
 
-    Returns two 1-D arrays of length `config.NUM_EPOCHS`.
+    Returns two 1-D arrays of length `config.NUM_EPOCHS`. If no batch data exists for an epoch,
+    that epoch's loss is set to `np.nan` so plotting and downstream analysis can handle missing
+    epochs gracefully.
     """
-    # compute average loss per epoch
-    loss_data_average = loss_data.reshape(config.NUM_EPOCHS, -1).mean(axis=1)
+    # map fractional epoch indicators (e.g., 1.23) to integer epoch indices
+    epoch_numbers = np.rint(epoch_data).astype(int)
 
-    # use 1..NUM_EPOCHS as x-axis indices for plotting
-    epoch_indices = np.arange(1, config.NUM_EPOCHS + 1)
+    # if epochs are zero-based (0,1,...), shift to 1-based indexing
+    if epoch_numbers.min() == 0:
+        epoch_numbers = epoch_numbers + 1
+
+    num_epochs = config.NUM_EPOCHS
+    loss_data_average = np.full(num_epochs, np.nan, dtype=float)
+
+    for e in range(1, num_epochs + 1):
+        mask = epoch_numbers == e
+        if np.any(mask):
+            loss_data_average[e - 1] = loss_data[mask].mean()
+
+    epoch_indices = np.arange(1, num_epochs + 1)
 
     return epoch_indices, loss_data_average
 
@@ -139,7 +191,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Train a new MNIST model with gradient descent")
     parser.add_argument(
-        "--name",
+        "--name", "--n",
         type=str,
         help="Model name (without .pt). Saved to models directory"
     )
